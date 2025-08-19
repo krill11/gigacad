@@ -227,6 +227,92 @@ class OnPyClient:
         except Exception as e:
             raise Exception(f"Failed to add rectangle to sketch '{sketch_name}': {str(e)}")
     
+    def add_line_to_sketch(self, sketch_name: str, start_point: List[float], end_point: List[float]) -> Dict[str, Any]:
+        """Add a line to an existing sketch"""
+        if sketch_name not in self.sketches:
+            raise Exception(f"Sketch '{sketch_name}' not found. Available sketches: {list(self.sketches.keys())}")
+        
+        sketch = self.sketches[sketch_name]
+        
+        # Convert mm to inches (OnPy default)
+        start_inches = (start_point[0] / 25.4, start_point[1] / 25.4)
+        end_inches = (end_point[0] / 25.4, end_point[1] / 25.4)
+        
+        try:
+            sketch.add_line(start_inches, end_inches)
+            
+            # Update feature tracking
+            if sketch_name in self.features:
+                self.features[sketch_name]["has_geometry"] = True
+                if "geometry_type" not in self.features[sketch_name]:
+                    self.features[sketch_name]["geometry_type"] = "line"
+                else:
+                    self.features[sketch_name]["geometry_type"] = "mixed"
+            
+            print(f"✅ Added line to '{sketch_name}': {start_inches} to {end_inches} inches ({start_point} to {end_point} mm)")
+            return {"success": True}
+        except Exception as e:
+            raise Exception(f"Failed to add line to sketch '{sketch_name}': {str(e)}")
+    
+    def add_arc_to_sketch(self, sketch_name: str, centerpoint: List[float], radius: float, 
+                         start_angle: float, end_angle: float) -> Dict[str, Any]:
+        """Add a centerpoint arc to an existing sketch"""
+        if sketch_name not in self.sketches:
+            raise Exception(f"Sketch '{sketch_name}' not found. Available sketches: {list(self.sketches.keys())}")
+        
+        sketch = self.sketches[sketch_name]
+        
+        # Convert mm to inches (OnPy default)
+        centerpoint_inches = (centerpoint[0] / 25.4, centerpoint[1] / 25.4)
+        radius_inches = radius / 25.4
+        
+        try:
+            sketch.add_centerpoint_arc(
+                centerpoint=centerpoint_inches, 
+                radius=radius_inches, 
+                start_angle=start_angle, 
+                end_angle=end_angle
+            )
+            
+            # Update feature tracking
+            if sketch_name in self.features:
+                self.features[sketch_name]["has_geometry"] = True
+                if "geometry_type" not in self.features[sketch_name]:
+                    self.features[sketch_name]["geometry_type"] = "arc"
+                else:
+                    self.features[sketch_name]["geometry_type"] = "mixed"
+            
+            print(f"✅ Added arc to '{sketch_name}': center={centerpoint_inches}, radius={radius_inches} inches, {start_angle}° to {end_angle}°")
+            return {"success": True}
+        except Exception as e:
+            raise Exception(f"Failed to add arc to sketch '{sketch_name}': {str(e)}")
+    
+    def trace_points_in_sketch(self, sketch_name: str, points: List[List[float]], end_connect: bool = True) -> Dict[str, Any]:
+        """Create connected lines through a series of points in a sketch"""
+        if sketch_name not in self.sketches:
+            raise Exception(f"Sketch '{sketch_name}' not found. Available sketches: {list(self.sketches.keys())}")
+        
+        sketch = self.sketches[sketch_name]
+        
+        # Convert mm to inches (OnPy default)
+        points_inches = [(point[0] / 25.4, point[1] / 25.4) for point in points]
+        
+        try:
+            lines = sketch.trace_points(*points_inches, end_connect=end_connect)
+            
+            # Update feature tracking
+            if sketch_name in self.features:
+                self.features[sketch_name]["has_geometry"] = True
+                if "geometry_type" not in self.features[sketch_name]:
+                    self.features[sketch_name]["geometry_type"] = "polyline"
+                else:
+                    self.features[sketch_name]["geometry_type"] = "mixed"
+            
+            print(f"✅ Traced {len(points)} points in '{sketch_name}' (end_connect={end_connect})")
+            return {"success": True, "line_objects": lines}
+        except Exception as e:
+            raise Exception(f"Failed to trace points in sketch '{sketch_name}': {str(e)}")
+    
     # ===== FEATURE OPERATIONS =====
     
     def extrude_sketch(self, document_id: str, workspace_id: str, part_studio_id: str,

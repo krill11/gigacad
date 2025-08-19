@@ -157,28 +157,110 @@ class CADAgent:
                     }
                 }
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "add_line_to_sketch",
+                    "description": "Add a straight line to an existing sketch",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "sketch_name": {
+                                "type": "string",
+                                "description": "Name of the sketch to add line to"
+                            },
+                            "start_point": {
+                                "type": "array",
+                                "items": {"type": "number"},
+                                "description": "Start point [x, y] in mm (NO UNITS, just numbers like [0, 10])"
+                            },
+                            "end_point": {
+                                "type": "array", 
+                                "items": {"type": "number"},
+                                "description": "End point [x, y] in mm (NO UNITS, just numbers like [50, 30])"
+                            }
+                        },
+                        "required": ["sketch_name", "start_point", "end_point"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "add_arc_to_sketch",
+                    "description": "Add a circular arc to an existing sketch", 
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "sketch_name": {
+                                "type": "string",
+                                "description": "Name of the sketch to add arc to"
+                            },
+                            "centerpoint": {
+                                "type": "array",
+                                "items": {"type": "number"},
+                                "description": "Arc center point [x, y] in mm (NO UNITS, just numbers)"
+                            },
+                            "radius": {
+                                "type": "number",
+                                "description": "Arc radius in mm (NO UNITS, just number like 15)"
+                            },
+                            "start_angle": {
+                                "type": "number",
+                                "description": "Start angle in degrees (0-360)"
+                            },
+                            "end_angle": {
+                                "type": "number", 
+                                "description": "End angle in degrees (0-360)"
+                            }
+                        },
+                        "required": ["sketch_name", "centerpoint", "radius", "start_angle", "end_angle"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "trace_points_in_sketch",
+                    "description": "Create connected lines through multiple points in a sketch",
+                    "parameters": {
+                        "type": "object", 
+                        "properties": {
+                            "sketch_name": {
+                                "type": "string",
+                                "description": "Name of the sketch to add lines to"
+                            },
+                            "points": {
+                                "type": "array",
+                                "items": {
+                                    "type": "array",
+                                    "items": {"type": "number"}
+                                },
+                                "description": "Array of points [[x1, y1], [x2, y2], [x3, y3]] in mm (NO UNITS, just numbers)"
+                            },
+                            "end_connect": {
+                                "type": "boolean",
+                                "default": True,
+                                "description": "Whether to connect the last point back to the first (closes the shape)"
+                            }
+                        },
+                        "required": ["sketch_name", "points"]
+                    }
+                }
+            },
             
             # Feature operations
             {
                 "type": "function",
                 "function": {
                     "name": "extrude_sketch",
-                    "description": "Extrude a sketch to create a 3D feature",
+                    "description": "Extrude a sketch to create a 3D feature with different boolean operations",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                                                    "sketch_name": {
-                            "type": "string",
-                            "description": "Name of the sketch to extrude"
-                        },
-                            "direction": {
-                                "type": "array",
-                                "items": {"type": "number"},
-                                "description": "Extrusion direction [x, y, z]"
-                            },
-                            "endBound": {
+                            "sketch_name": {
                                 "type": "string",
-                                "description": "End boundary type (blind, through, upTo)"
+                                "description": "Name of the sketch to extrude"
                             },
                             "endBoundOffset": {
                                 "type": "number",
@@ -186,7 +268,9 @@ class CADAgent:
                             },
                             "operation": {
                                 "type": "string",
-                                "description": "Operation type (new, add, remove, intersect)"
+                                "enum": ["new", "add", "remove", "intersect"],
+                                "default": "new",
+                                "description": "Boolean operation: 'new' creates new part, 'add' joins with existing, 'remove' cuts/subtracts from existing part (like drilling holes), 'intersect' keeps only overlapping volume"
                             }
                         },
                         "required": ["sketch_name", "endBoundOffset"]
@@ -322,8 +406,8 @@ class CADAgent:
         Available operations:
         - Document and workspace management (create/select documents, create part studios)
         - Sketch creation (create_sketch - creates empty sketch on plane)
-        - Sketch geometry (add_circle_to_sketch, add_rectangle_to_sketch)
-        - 3D features (extrude_sketch, revolve_sketch) 
+        - Sketch geometry (add_circle_to_sketch, add_rectangle_to_sketch, add_line_to_sketch, add_arc_to_sketch, trace_points_in_sketch)
+        - 3D features (extrude_sketch with operations: new/add/remove/intersect, revolve_sketch) 
         - Feature management (get_features, delete_feature)
         - Modifications (create_fillet, create_chamfer)
         
@@ -347,6 +431,38 @@ class CADAgent:
         3. create_sketch(plane="Front", name="Rectangle Sketch")
         4. add_rectangle_to_sketch(sketch_name="Rectangle Sketch", corner_1=[-25,-15], corner_2=[25,15])
         5. extrude_sketch(sketch_name="Rectangle Sketch", endBoundOffset=30)
+        
+        Example workflow for drilling a hole (remove operation):
+        1. First create a base part with extrude_sketch(operation="new")
+        2. create_sketch(plane="Top", name="Hole Sketch")  
+        3. add_circle_to_sketch(sketch_name="Hole Sketch", center=[10,10], radius=5)
+        4. extrude_sketch(sketch_name="Hole Sketch", endBoundOffset=20, operation="remove")
+        
+        Example workflow for complex profile with lines and arcs:
+        1. create_sketch(plane="Front", name="Profile Sketch")
+        2. trace_points_in_sketch(sketch_name="Profile Sketch", points=[[0,0], [50,0], [50,30]], end_connect=False)
+        3. add_arc_to_sketch(sketch_name="Profile Sketch", centerpoint=[50,30], radius=10, start_angle=0, end_angle=90)
+        4. add_line_to_sketch(sketch_name="Profile Sketch", start_point=[60,30], end_point=[60,60])
+        5. extrude_sketch(sketch_name="Profile Sketch", endBoundOffset=25)
+        
+        EXTRUDE OPERATIONS EXPLAINED:
+        - operation="new": Creates a new separate part
+        - operation="add": Joins/merges with existing parts (union)
+        - operation="remove": Cuts away/subtracts from existing parts (like drilling holes)
+        - operation="intersect": Keeps only overlapping volume
+        
+        SKETCH GEOMETRY CAPABILITIES:
+        - Lines: add_line_to_sketch(start_point=[x1,y1], end_point=[x2,y2])
+        - Arcs: add_arc_to_sketch(centerpoint=[x,y], radius=R, start_angle=0, end_angle=90) 
+        - Connected lines: trace_points_in_sketch(points=[[x1,y1], [x2,y2], [x3,y3]])
+        - Basic shapes: add_circle_to_sketch, add_rectangle_to_sketch
+        
+        CRITICAL DIMENSIONAL ACCURACY REQUIREMENTS:
+        - MAKE SURE ALL DIMENSIONS ARE EXACTLY AS THE USER SPECIFIES
+        - Double-check every radius, length, width, height, angle, and position
+        - If user says "50mm diameter", use radius=25 (half of diameter)
+        - If user says "100mm x 50mm rectangle", use corner_1=[0,0], corner_2=[100,50]
+        - CAREFULLY THINK THROUGH ALL ACTIONS TO ENSURE PART PERFECTION
         
         ABSOLUTELY CRITICAL: NEVER use strings like "70mm" or '25mm' - ALWAYS use plain numbers like 70 or 25!
         
@@ -458,6 +574,13 @@ class CADAgent:
         - ALL NUMERIC VALUES MUST BE PLAIN NUMBERS WITHOUT UNITS!
         - Use endBoundOffset=70 NOT "70mm" or '70mm' or "70 mm"
         - Use radius=25 NOT "25mm" or '25mm' 
+        
+        DIMENSIONAL ACCURACY IMPERATIVE:
+        - MAKE SURE ALL DIMENSIONS ARE EXACTLY AS THE USER SPECIFIES
+        - CAREFULLY THINK THROUGH ALL ACTIONS TO ENSURE PART PERFECTION
+        - Double-check calculations: diameter ÷ 2 = radius, verify all measurements
+        - Plan each step methodically before executing
+        
         - Continue until the original request is fully completed
         - Only complete when the part is fully designed
         
@@ -478,7 +601,7 @@ class CADAgent:
         }}
         """
         
-        response = await self.llm.generate(planning_prompt, max_tokens=12000)
+        response = await self.llm.generate(planning_prompt, max_tokens=12000, temperature=0.1)
         
         # Debug: Print the raw LLM response to see what's happening
         print(f"🔍 DEBUG - Raw LLM Response:")
@@ -657,6 +780,32 @@ class CADAgent:
                     corner_2=arguments["corner_2"]
                 )
                 print(f"✅ Added rectangle to sketch '{arguments['sketch_name']}'")
+                
+            elif function_name == "add_line_to_sketch":
+                result = self.onshape.add_line_to_sketch(
+                    sketch_name=arguments["sketch_name"],
+                    start_point=arguments["start_point"],
+                    end_point=arguments["end_point"]
+                )
+                print(f"✅ Added line to sketch '{arguments['sketch_name']}'")
+                
+            elif function_name == "add_arc_to_sketch":
+                result = self.onshape.add_arc_to_sketch(
+                    sketch_name=arguments["sketch_name"],
+                    centerpoint=arguments["centerpoint"],
+                    radius=arguments["radius"],
+                    start_angle=arguments["start_angle"],
+                    end_angle=arguments["end_angle"]
+                )
+                print(f"✅ Added arc to sketch '{arguments['sketch_name']}'")
+                
+            elif function_name == "trace_points_in_sketch":
+                result = self.onshape.trace_points_in_sketch(
+                    sketch_name=arguments["sketch_name"],
+                    points=arguments["points"],
+                    end_connect=arguments.get("end_connect", True)
+                )
+                print(f"✅ Traced {len(arguments['points'])} points in sketch '{arguments['sketch_name']}'")
                 
             elif function_name == "extrude_sketch":
                 if not self.current_part_studio:
