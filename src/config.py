@@ -1,5 +1,5 @@
 """
-Configuration management for CoralMaker
+Configuration management for GigaCAD
 """
 
 import os
@@ -26,7 +26,7 @@ class Config:
     LMSTUDIO_MODEL: str = os.getenv("LMSTUDIO_MODEL", "local-model")
     
     # Application Configuration
-    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
     @classmethod

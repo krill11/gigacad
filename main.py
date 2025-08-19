@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CoralMaker - AI-Powered CAD Generation
+GigaCAD - AI-Powered CAD Generation
 Main entry point for the application
 """
 
@@ -23,7 +23,7 @@ def main():
             # Run web API
             uvicorn.run(app, host="0.0.0.0", port=8000)
         elif command == "help":
-            print("CoralMaker - AI-Powered CAD Generation")
+            print("GigaCAD - AI-Powered CAD Generation")
             print("\nUsage:")
             print("  python main.py cli     - Run command-line interface")
             print("  python main.py web     - Run web API server")
@@ -37,7 +37,7 @@ def main():
             sys.exit(1)
     else:
         # Default to CLI
-        print("Starting CoralMaker CLI...")
+        print("Starting GigaCAD CLI...")
         asyncio.run(cli_main())
 
 if __name__ == "__main__":

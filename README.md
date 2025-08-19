@@ -1,6 +1,6 @@
-# CoralMaker - AI-Powered CAD Generation 🤖
+# GigaCAD - AI-Powered CAD Generation 🤖
 
-CoralMaker is an innovative AI agent that generates CAD parts in Onshape using natural language descriptions. This project represents a significant step toward AI-powered CAD, combining the power of large language models with Onshape's robust API to create 3D parts from simple text prompts.
+GigaCAD is an innovative AI agent that generates CAD parts in Onshape using natural language descriptions. This project represents a significant step toward AI-powered CAD, combining the power of large language models with Onshape's robust API to create 3D parts from simple text prompts.
 
 ## 🌟 Features
 
@@ -82,30 +82,6 @@ python -m src.cli
 **Example:**
 ```
 🤖 CAD Agent > create Create a rectangular box that is 10mm wide, 20mm tall, and 15mm deep
-```
-
-#### Web API
-
-```bash
-# Start the web server
-python main.py web
-
-# Or run directly
-python -m src.api
-```
-
-The web API will be available at `http://localhost:8000`
-
-**API Endpoints:**
-- `POST /create-part` - Create a part from description
-- `GET /status` - Get current session status
-- `POST /reset` - Reset current session
-- `GET /tools` - Get available CAD tools
-- `GET /health` - Health check
-
-#### Web Interface
-
-Open `static/index.html` in your browser for a user-friendly web interface.
 
 ## 🏗️ Architecture
 
@@ -168,24 +144,6 @@ coralmaker/
 └── README.md                # This file
 ```
 
-### Adding New CAD Operations
-
-1. **Extend OnshapeClient** with new methods
-2. **Add tool definition** to CADAgent.tools
-3. **Implement execution logic** in _execute_tool_call
-4. **Update system message** with new capabilities
-
-### Testing
-
-```bash
-# Run CLI tests
-python -m src.cli
-
-# Test web API
-python main.py web
-# Then visit http://localhost:8000/docs for interactive API docs
-```
-
 ## 🌐 API Reference
 
 ### Onshape API Integration
@@ -238,7 +196,7 @@ We welcome contributions! Areas for improvement:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU GPL v3.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -251,7 +209,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: Use GitHub Issues for bug reports and feature requests
 - **Discussions**: GitHub Discussions for questions and ideas
-- **Email**: For private inquiries
 
 ---
 

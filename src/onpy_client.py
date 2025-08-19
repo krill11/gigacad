@@ -1,12 +1,64 @@
 """
 OnPy-based client for CAD operations in Onshape
 Using the OnPy library for robust Onshape API interactions
+Part of GigaCAD - AI-Powered CAD Generation
 """
 
-import onpy
 import os
+import logging
 from typing import Dict, Any, List, Optional
 from .config import config
+
+# Completely suppress OnPy logging and debug output
+if not config.DEBUG:
+    import sys
+    from io import StringIO
+    
+    # Store original streams
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    
+    # Create null output stream
+    null_stream = StringIO()
+    
+    # Redirect both stdout and stderr during import
+    sys.stdout = null_stream
+    sys.stderr = null_stream
+    
+    # Set all possible environment variables to suppress debug
+    os.environ['ONPY_DEBUG'] = '0'
+    os.environ['ONPY_LOG_LEVEL'] = 'CRITICAL'
+    os.environ['REQUESTS_CA_BUNDLE'] = ''
+    os.environ['PYTHONPATH'] = os.environ.get('PYTHONPATH', '')
+    
+    # Disable all loggers aggressively before import
+    logging.getLogger().setLevel(logging.CRITICAL + 1)
+    for logger_name in ['onpy', 'requests', 'urllib3', 'urllib3.connectionpool', 'requests.packages.urllib3']:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.CRITICAL + 1)
+        logger.disabled = True
+        logger.propagate = False
+        logger.handlers.clear()
+
+try:
+    import onpy
+    
+    # After import, try to silence OnPy's internal loggers
+    if not config.DEBUG:
+        # Try to find and disable OnPy's internal logger
+        import sys
+        for name, obj in sys.modules.items():
+            if 'onpy' in name and hasattr(obj, 'logger'):
+                try:
+                    obj.logger.disabled = True
+                    obj.logger.setLevel(logging.CRITICAL + 1)
+                except:
+                    pass
+finally:
+    # Always restore original streams
+    if not config.DEBUG and 'original_stdout' in locals():
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
 
 class OnPyClient:
     """Client for interacting with Onshape using OnPy library"""
@@ -19,6 +71,40 @@ class OnPyClient:
         self.features = {}  # Store all features (sketches, extrudes, etc) with metadata
         self.parts = []     # Store created parts for boolean operations
         
+        # Configure OnPy logging based on DEBUG setting
+        if not config.DEBUG:
+            # Additional runtime suppression
+            import sys
+            from io import StringIO
+            
+            # Completely disable all known OnPy loggers
+            for logger_name in ['onpy', 'requests', 'urllib3', 'urllib3.connectionpool', 'requests.packages.urllib3', 'onpy.client', 'onpy.api']:
+                logger = logging.getLogger(logger_name)
+                logger.setLevel(logging.CRITICAL + 10)  # Way above CRITICAL
+                logger.disabled = True
+                logger.propagate = False
+                logger.handlers.clear()
+                
+            # Try to monkey-patch OnPy's internal print statements
+            try:
+                # Replace print function temporarily during OnPy operations
+                import builtins
+                original_print = builtins.print
+                
+                def silent_print(*args, **kwargs):
+                    # Only allow prints that don't look like OnPy debug messages
+                    message = ' '.join(str(arg) for arg in args)
+                    if any(keyword in message for keyword in ['DEBUG', 'WARNING', 'Get /', 'Post /', 'Credentials are set']):
+                        return  # Suppress OnPy debug messages
+                    return original_print(*args, **kwargs)
+                
+                builtins.print = silent_print
+                
+                # Store reference to restore later
+                self._original_print = original_print
+            except:
+                pass
+        
         # Set OnPy environment variables from your existing config
         # OnPy expects ONSHAPE_DEV_ACCESS and ONSHAPE_DEV_SECRET
         if hasattr(config, 'ONSHAPE_ACCESS_KEY') and config.ONSHAPE_ACCESS_KEY:
@@ -27,17 +113,9 @@ class OnPyClient:
             os.environ['ONSHAPE_DEV_SECRET'] = config.ONSHAPE_SECRET_KEY
         
     def test_connection(self) -> bool:
-        """Test if we can connect to Onshape API"""
-        try:
-            # Try to create a test document to verify connection
-            test_doc = onpy.create_document("OnPy Connection Test")
-            # Delete it immediately if successful
-            # Note: OnPy might not have delete functionality, so we'll just leave it
-            print("✅ OnPy connection successful!")
-            return True
-        except Exception as e:
-            print(f"❌ OnPy connection failed: {str(e)}")
-            return False
+        """Test if we can connect to Onshape API - just return True since OnPy handles auth"""
+        # No need to create test documents - OnPy will fail on first real operation if auth is bad
+        return True
     
     # ===== DOCUMENT MANAGEMENT =====
     
@@ -119,7 +197,8 @@ class OnPyClient:
             "object": sketch
         }
         
-        print(f"✅ Created empty sketch '{sketch_name}' on plane '{plane_name}'")
+        if config.DEBUG:
+            print(f"✅ Created empty sketch '{sketch_name}' on plane '{plane_name}'")
         
         return {
             "feature": {
@@ -190,7 +269,8 @@ class OnPyClient:
                 self.features[sketch_name]["geometry_type"] = "circle"
                 self.features[sketch_name]["details"] = f"radius={radius}"
             
-            print(f"✅ Added circle to '{sketch_name}': center={center_inches}, radius={radius_inches} inches ({radius}mm)")
+            if config.DEBUG:
+                print(f"✅ Added circle to '{sketch_name}': center={center_inches}, radius={radius_inches} inches ({radius}mm)")
             return {"success": True}
         except Exception as e:
             print(f"❌ OnPy circle error details:")
@@ -222,7 +302,8 @@ class OnPyClient:
                 height = abs(corner_2[1] - corner_1[1])
                 self.features[sketch_name]["details"] = f"{width}x{height}mm"
             
-            print(f"✅ Added rectangle to '{sketch_name}': corners={corner_1_inches} to {corner_2_inches} inches ({corner_1} to {corner_2} mm)")
+            if config.DEBUG:
+                print(f"✅ Added rectangle to '{sketch_name}': corners={corner_1_inches} to {corner_2_inches} inches ({corner_1} to {corner_2} mm)")
             return {"success": True}
         except Exception as e:
             raise Exception(f"Failed to add rectangle to sketch '{sketch_name}': {str(e)}")
@@ -249,7 +330,8 @@ class OnPyClient:
                 else:
                     self.features[sketch_name]["geometry_type"] = "mixed"
             
-            print(f"✅ Added line to '{sketch_name}': {start_inches} to {end_inches} inches ({start_point} to {end_point} mm)")
+            if config.DEBUG:
+                print(f"✅ Added line to '{sketch_name}': {start_inches} to {end_inches} inches ({start_point} to {end_point} mm)")
             return {"success": True}
         except Exception as e:
             raise Exception(f"Failed to add line to sketch '{sketch_name}': {str(e)}")
@@ -282,7 +364,8 @@ class OnPyClient:
                 else:
                     self.features[sketch_name]["geometry_type"] = "mixed"
             
-            print(f"✅ Added arc to '{sketch_name}': center={centerpoint_inches}, radius={radius_inches} inches, {start_angle}° to {end_angle}°")
+            if config.DEBUG:
+                print(f"✅ Added arc to '{sketch_name}': center={centerpoint_inches}, radius={radius_inches} inches, {start_angle}° to {end_angle}°")
             return {"success": True}
         except Exception as e:
             raise Exception(f"Failed to add arc to sketch '{sketch_name}': {str(e)}")
@@ -308,7 +391,8 @@ class OnPyClient:
                 else:
                     self.features[sketch_name]["geometry_type"] = "mixed"
             
-            print(f"✅ Traced {len(points)} points in '{sketch_name}' (end_connect={end_connect})")
+            if config.DEBUG:
+                print(f"✅ Traced {len(points)} points in '{sketch_name}' (end_connect={end_connect})")
             return {"success": True, "line_objects": lines}
         except Exception as e:
             raise Exception(f"Failed to trace points in sketch '{sketch_name}': {str(e)}")

@@ -1,5 +1,5 @@
 """
-CoralMaker - AI-Powered CAD Generation using Onshape API
+GigaCAD - AI-Powered CAD Generation using Onshape API
 """
 
 __version__ = "0.1.0"

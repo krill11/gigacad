@@ -1,5 +1,5 @@
 """
-LLM interface for CoralMaker - supports both Groq API and local LMStudio
+LLM interface for GigaCAD - supports both Groq API and local LMStudio
 """
 
 import json

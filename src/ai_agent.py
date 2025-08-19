@@ -5,14 +5,32 @@ AI Agent for CAD generation using LLM and Onshape API
 import json
 import asyncio
 import re
+import warnings
+import os
 from typing import Dict, Any, List, Optional
 from .llm_interface import LLMFactory, LLMInterface
 from .onpy_client import OnPyClient
+from .config import config
 
 class CADAgent:
     """AI agent for generating CAD parts from natural language descriptions"""
     
     def __init__(self, llm_type: str = "groq"):
+        # Configure debug output based on environment
+        if not config.DEBUG:
+            # Suppress warnings and debug output when DEBUG is False
+            warnings.filterwarnings("ignore")
+            os.environ['ONPY_DEBUG'] = 'false'
+            os.environ['ONPY_LOG_LEVEL'] = 'ERROR'
+            
+            # Suppress OnPy logging at the root level
+            import logging
+            logging.getLogger().setLevel(logging.ERROR)
+            logging.getLogger('onpy').setLevel(logging.ERROR)
+            logging.getLogger('requests').setLevel(logging.ERROR)
+            logging.getLogger('urllib3').setLevel(logging.ERROR)
+            logging.getLogger('urllib3.connectionpool').setLevel(logging.ERROR)
+        
         self.llm = LLMFactory.create_interface(llm_type)
         self.onshape = OnPyClient()
         self.current_document = None
@@ -353,28 +371,7 @@ class CADAgent:
             },
             
             # Modification features
-            {
-                "type": "function",
-                "function": {
-                    "name": "create_fillet",
-                    "description": "Create a fillet (rounded edge) feature",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "edge_queries": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of edge IDs to fillet"
-                            },
-                            "radius": {
-                                "type": "number", 
-                                "description": "Fillet radius"
-                            }
-                        },
-                        "required": ["edge_queries", "radius"]
-                    }
-                }
-            },
+
             {
                 "type": "function",
                 "function": {
@@ -409,7 +406,7 @@ class CADAgent:
         - Sketch geometry (add_circle_to_sketch, add_rectangle_to_sketch, add_line_to_sketch, add_arc_to_sketch, trace_points_in_sketch)
         - 3D features (extrude_sketch with operations: new/add/remove/intersect, revolve_sketch) 
         - Feature management (get_features, delete_feature)
-        - Modifications (create_fillet, create_chamfer)
+        - Modifications (create_chamfer) [fillets coming soon]
         
         CRITICAL WORKFLOW RULES:
         1. Always start by creating or selecting a document
@@ -475,7 +472,9 @@ class CADAgent:
         - Use descriptive names like "Base Sketch", "Handle Profile", etc.
         
         IMPORTANT: This matches the proper OnPy workflow from the examples. Always create empty sketches first, then add geometry.
-        Be precise with dimensions and positions. Always think step by step and create professional-quality designs."""
+        Be precise with dimensions and positions. Always think step by step and create professional-quality designs.
+        
+        To create an extrude that is a cut, you need to use the "remove" operation, because there is no "cut" operation."""
     
     async def create_part_from_description(self, description: str) -> str:
         """Create a CAD part from a natural language description using agentic workflow"""
@@ -501,8 +500,11 @@ class CADAgent:
         while step_count < max_steps:
             step_count += 1
             
-            print(f"\n🔄 STEP {step_count}: AGENT THINKING...")
-            print("-" * 60)
+            if config.DEBUG:
+                print(f"\n🔄 STEP {step_count}: AGENT THINKING...")
+                print("-" * 60)
+            else:
+                print(f"\n🔄 STEP {step_count}: AGENT THINKING...")
             
             # Get the next action from the LLM
             next_action = await self._plan_next_step(context, description)
@@ -514,10 +516,11 @@ class CADAgent:
             # Execute the planned action
             step_result = await self._execute_planned_step(next_action)
             
-            # Show results to user
-            print(f"\n📊 STEP {step_count} RESULT:")
-            print(f"   Status: {'✅ SUCCESS' if step_result['success'] else '❌ FAILED'}")
-            print(f"   Output: {step_result['output']}")
+            # Show results to user only in debug mode
+            if config.DEBUG:
+                print(f"\n📊 STEP {step_count} RESULT:")
+                print(f"   Status: {'✅ SUCCESS' if step_result['success'] else '❌ FAILED'}")
+                print(f"   Output: {step_result['output']}")
             
             # Update context for next iteration
             context += f"\n\nStep {step_count}: {next_action.get('description', 'Unknown action')}"
@@ -601,11 +604,12 @@ class CADAgent:
         }}
         """
         
-        response = await self.llm.generate(planning_prompt, max_tokens=12000, temperature=0.1)
+        response = await self.llm.generate(planning_prompt, max_tokens=12000, temperature=0.5)
         
-        # Debug: Print the raw LLM response to see what's happening
-        print(f"🔍 DEBUG - Raw LLM Response:")
-        print(f"   {response}")
+        # Debug: Print the raw LLM response only if DEBUG is enabled
+        if config.DEBUG:
+            print(f"🔍 DEBUG - Raw LLM Response:")
+            print(f"   {response}")
         
         try:
             # Extract JSON from response
@@ -614,7 +618,8 @@ class CADAgent:
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 json_str = json_match.group()
-                print(f"🔍 DEBUG - Extracted JSON: {json_str}")
+                if config.DEBUG:
+                    print(f"🔍 DEBUG - Extracted JSON: {json_str}")
                 plan = json.loads(json_str)
             else:
                 print(f"⚠️  No JSON found in response: {response}")
@@ -624,12 +629,16 @@ class CADAgent:
                     "message": "Could not find JSON in planning response"
                 }
             
-            print(f"🧠 AGENT PLAN:")
-            print(f"   Action: {plan.get('action', 'unknown')}")
-            print(f"   Reasoning: {plan.get('reasoning', 'No reasoning provided')}")
-            if plan.get('action') == 'tool_call':
-                print(f"   Tool: {plan.get('tool_name', 'unknown')}")
-                print(f"   Description: {plan.get('description', 'No description')}")
+            if config.DEBUG:
+                print(f"🧠 AGENT PLAN:")
+                print(f"   Action: {plan.get('action', 'unknown')}")
+                print(f"   Reasoning: {plan.get('reasoning', 'No reasoning provided')}")
+                if plan.get('action') == 'tool_call':
+                    print(f"   Tool: {plan.get('tool_name', 'unknown')}")
+                    print(f"   Description: {plan.get('description', 'No description')}")
+            else:
+                # Only show reasoning in clean mode
+                print(f"🧠 REASONING: {plan.get('reasoning', 'No reasoning provided')}")
             
             return plan
             
@@ -650,9 +659,10 @@ class CADAgent:
         tool_name = plan.get("tool_name")
         tool_args = plan.get("tool_args", {})
         
-        print(f"⚙️  EXECUTING: {plan.get('description', 'Unknown action')}")
-        print(f"   Tool: {tool_name}")
-        print(f"   Args: {tool_args}")
+        if config.DEBUG:
+            print(f"⚙️  EXECUTING: {plan.get('description', 'Unknown action')}")
+            print(f"   Tool: {tool_name}")
+            print(f"   Args: {tool_args}")
         
         try:
             # Check if tool exists in our available tools
@@ -768,7 +778,8 @@ class CADAgent:
                     center=arguments["center"],
                     radius=arguments["radius"]
                 )
-                print(f"✅ Added circle to sketch '{arguments['sketch_name']}': radius {arguments['radius']}mm")
+                if config.DEBUG:
+                    print(f"✅ Added circle to sketch '{arguments['sketch_name']}': radius {arguments['radius']}mm")
                 
             elif function_name == "add_rectangle_to_sketch":
                 if not self.current_part_studio:
@@ -779,7 +790,8 @@ class CADAgent:
                     corner_1=arguments["corner_1"],
                     corner_2=arguments["corner_2"]
                 )
-                print(f"✅ Added rectangle to sketch '{arguments['sketch_name']}'")
+                if config.DEBUG:
+                    print(f"✅ Added rectangle to sketch '{arguments['sketch_name']}'")
                 
             elif function_name == "add_line_to_sketch":
                 result = self.onshape.add_line_to_sketch(
@@ -787,7 +799,8 @@ class CADAgent:
                     start_point=arguments["start_point"],
                     end_point=arguments["end_point"]
                 )
-                print(f"✅ Added line to sketch '{arguments['sketch_name']}'")
+                if config.DEBUG:
+                    print(f"✅ Added line to sketch '{arguments['sketch_name']}'")
                 
             elif function_name == "add_arc_to_sketch":
                 result = self.onshape.add_arc_to_sketch(
@@ -797,7 +810,8 @@ class CADAgent:
                     start_angle=arguments["start_angle"],
                     end_angle=arguments["end_angle"]
                 )
-                print(f"✅ Added arc to sketch '{arguments['sketch_name']}'")
+                if config.DEBUG:
+                    print(f"✅ Added arc to sketch '{arguments['sketch_name']}'")
                 
             elif function_name == "trace_points_in_sketch":
                 result = self.onshape.trace_points_in_sketch(
@@ -805,7 +819,8 @@ class CADAgent:
                     points=arguments["points"],
                     end_connect=arguments.get("end_connect", True)
                 )
-                print(f"✅ Traced {len(arguments['points'])} points in sketch '{arguments['sketch_name']}'")
+                if config.DEBUG:
+                    print(f"✅ Traced {len(arguments['points'])} points in sketch '{arguments['sketch_name']}'")
                 
             elif function_name == "extrude_sketch":
                 if not self.current_part_studio:
@@ -858,19 +873,6 @@ class CADAgent:
                     feature_id=arguments["feature_id"]
                 )
                 print(f"Deleted feature: {arguments['feature_id']}")
-                
-            elif function_name == "create_fillet":
-                if not self.current_part_studio:
-                    raise Exception("No part studio selected. Create a part studio first.")
-                
-                result = self.onshape.create_fillet(
-                    document_id=self.current_document,
-                    workspace_id=self.current_workspace,
-                    part_studio_id=self.current_part_studio,
-                    edge_queries=arguments["edge_queries"],
-                    radius=arguments["radius"]
-                )
-                print(f"Created fillet: radius {arguments['radius']} mm on {len(arguments['edge_queries'])} edges")
                 
             elif function_name == "create_chamfer":
                 if not self.current_part_studio:

@@ -1,5 +1,5 @@
 """
-FastAPI web interface for CoralMaker AI CAD Agent
+FastAPI web interface for GigaCAD AI CAD Agent
 """
 
 from fastapi import FastAPI, HTTPException
@@ -11,7 +11,7 @@ from .ai_agent import CADAgent
 from .config import config
 
 app = FastAPI(
-    title="CoralMaker - AI CAD Agent",
+    title="GigaCAD - AI CAD Agent",
     description="AI-powered CAD generation using Onshape API",
     version="0.1.0"
 )
@@ -55,7 +55,7 @@ async def startup_event():
 async def root():
     """Root endpoint"""
     return {
-        "message": "CoralMaker AI CAD Agent",
+        "message": "GigaCAD AI CAD Agent",
         "version": "0.1.0",
         "status": "running",
         "capabilities": [
