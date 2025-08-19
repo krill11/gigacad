@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoralMaker - AI CAD Agent</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .capabilities {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .capabilities h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+        }
+        .capability-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .capability-list li {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            resize: vertical;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .primary-btn {
+            background-color: #27ae60;
+        }
+        .primary-btn:hover {
+            background-color: #229954;
+        }
+        .secondary-btn {
+            background-color: #95a5a6;
+        }
+        .secondary-btn:hover {
+            background-color: #7f8c8d;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #ecf0f1;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #d5f4e6;
+            border-left: 4px solid #27ae60;
+        }
+        .error {
+            background-color: #fadbd8;
+            border-left: 4px solid #e74c3c;
+        }
+        .loading {
+            text-align: center;
+            color: #7f8c8d;
+        }
+        .tools {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4fd;
+            border-radius: 5px;
+        }
+        .tool-item {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .examples {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .examples h4 {
+            margin: 0 0 10px 0;
+            color: #856404;
+        }
+        .example-item {
+            background: #fff;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #f39c12;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .example-item:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 CoralMaker - AI CAD Agent</h1>
+        <div class="subtitle">AI-powered CAD generation with full Onshape capabilities</div>
+        
+        <div class="capabilities">
+            <h3>🎯 Full CAD Capabilities</h3>
+            <ul class="capability-list">
+                <li>📐 Sketches & 2D Geometry</li>
+                <li>🔲 3D Features (Extrude, Revolve, Sweep, Loft)</li>
+                <li>⚙️ Advanced Operations (Patterns, Fillets, Holes)</li>
+                <li>🔧 Assembly Management</li>
+                <li>🎨 Natural Language Design</li>
+            </ul>
+        </div>
+        
+        <div class="examples">
+            <h4>💡 Example Descriptions</h4>
+            <div class="example-item" onclick="useExample('Create a gear with 20 teeth, 2mm module, and 10mm thickness')">
+                Create a gear with 20 teeth, 2mm module, and 10mm thickness
+            </div>
+            <div class="example-item" onclick="useExample('Design a phone stand with adjustable angle and non-slip base')">
+                Design a phone stand with adjustable angle and non-slip base
+            </div>
+            <div class="example-item" onclick="useExample('Make a mechanical pencil with retractable tip and grip pattern')">
+                Make a mechanical pencil with retractable tip and grip pattern
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Describe the part you want to create:</label>
+            <textarea id="description" placeholder="Describe your design in natural language..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="llm-type">LLM Type:</label>
+            <select id="llm-type">
+                <option value="groq">Groq (Qwen2.5-32B)</option>
+                <option value="lmstudio">Local LMStudio</option>
+            </select>
+        </div>
+        
+        <div class="button-group">
+            <button onclick="createPart()" id="create-btn" class="primary-btn">Create Part</button>
+            <button onclick="getStatus()" class="secondary-btn">Get Status</button>
+            <button onclick="listDocuments()" class="secondary-btn">List Documents</button>
+            <button onclick="resetSession()" class="secondary-btn">Reset Session</button>
+            <button onclick="getTools()" class="secondary-btn">Show Tools</button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;">
+            <h3>Session Status</h3>
+            <div id="status-content"></div>
+        </div>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>Result</h3>
+            <div id="result-content"></div>
+        </div>
+        
+        <div id="tools" class="tools" style="display: none;">
+            <h3>Available Tools</h3>
+            <div id="tools-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        function useExample(text) {
+            document.getElementById('description').value = text;
+        }
+        
+        async function createPart() {
+            const description = document.getElementById('description').value;
+            const llmType = document.getElementById('llm-type').value;
+            
+            if (!description.trim()) {
+                alert('Please enter a description for the part');
+                return;
+            }
+            
+            const btn = document.getElementById('create-btn');
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/create-part`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        description: description,
+                        llm_type: llmType
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(result.message, false);
+                    showStatus(result.status);
+                } else {
+                    showResult(`Error: ${result.detail}`, true);
+                }
+            } catch (error) {
+                showResult(`Network error: ${error.message}`, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Part';
+            }
+        }
+        
+        async function getStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const status = await response.json();
+                
+                if (response.ok) {
+                    showStatus(status);
+                } else {
+                    showResult(`Error getting status: ${status.detail}`, true);
+                }
+            } catch (error) {
+                showResult(`Network error: ${error.message}`, true);
+            }
+        }
+        
+        async function listDocuments() {
+            try {
+                const response = await fetch(`${API_BASE}/documents`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(`Found ${result.count} documents`, false);
+                    if (result.documents && result.documents.length > 0) {
+                        const docList = result.documents.map(doc => 
+                            `• ${doc.name} (ID: ${doc.id})`
+                        ).join('\n');
+                        showResult(`Documents:\n${docList}`, false);
+                    }
+                } else {
+                    showResult(`Error getting documents: ${result.detail}`, true);
+                }
+            } catch (error) {
+                showResult(`Network error: ${error.message}`, true);
+            }
+        }
+        
+        async function resetSession() {
+            try {
+                const response = await fetch(`${API_BASE}/reset`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showResult(result.message, false);
+                    hideStatus();
+                } else {
+                    showResult(`Error: ${result.detail}`, true);
+                }
+            } catch (error) {
+                showResult(`Network error: ${error.message}`, true);
+            }
+        }
+        
+        async function getTools() {
+            try {
+                const response = await fetch(`${API_BASE}/tools`);
+                const tools = await response.json();
+                
+                if (response.ok) {
+                    showTools(tools);
+                } else {
+                    showResult(`Error getting tools: ${tools.detail}`, true);
+                }
+            } catch (error) {
+                showResult(`Network error: ${error.message}`, true);
+            }
+        }
+        
+        function showResult(message, isError) {
+            const resultDiv = document.getElementById('result');
+            const content = document.getElementById('result-content');
+            
+            content.textContent = message;
+            resultDiv.className = isError ? 'result error' : 'result';
+            resultDiv.style.display = 'block';
+        }
+        
+        function showStatus(status) {
+            const statusDiv = document.getElementById('status');
+            const content = document.getElementById('status-content');
+            
+            content.innerHTML = `
+                <p><strong>Document ID:</strong> ${status.document_id || 'None'}</p>
+                <p><strong>Workspace ID:</strong> ${status.workspace_id || 'None'}</p>
+                <p><strong>Part Studio ID:</strong> ${status.part_studio_id || 'None'}</p>
+                <p><strong>Assembly ID:</strong> ${status.assembly_id || 'None'}</p>
+                <p><strong>Available Tools:</strong> ${status.tools_available.length} tools</p>
+            `;
+            
+            statusDiv.style.display = 'block';
+        }
+        
+        function showTools(tools) {
+            const toolsDiv = document.getElementById('tools');
+            const content = document.getElementById('tools-content');
+            
+            let html = `<p><strong>Total Tools:</strong> ${tools.count}</p>`;
+            
+            if (tools.categories) {
+                html += '<h4>Tool Categories:</h4>';
+                for (const [category, toolList] of Object.entries(tools.categories)) {
+                    html += `<p><strong>${category}:</strong></p>`;
+                    html += '<div style="margin-left: 20px;">';
+                    toolList.forEach(tool => {
+                        html += `<span class="tool-item">${tool}</span>`;
+                    });
+                    html += '</div>';
+                }
+            }
+            
+            content.innerHTML = html;
+            toolsDiv.style.display = 'block';
+        }
+        
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            getStatus();
+            getTools();
+        });
+    </script>
+</body>
+</html> 
