@@ -82,6 +82,7 @@ python -m src.cli
 **Example:**
 ```
 🤖 CAD Agent > create Create a rectangular box that is 10mm wide, 20mm tall, and 15mm deep
+```
 
 ## 🏗️ Architecture
 
